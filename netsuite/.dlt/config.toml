@@ -1,0 +1,4 @@
+[runtime]
+log_level="INFO"
+dlthub_telemetry = false
+http_show_error_body = true
