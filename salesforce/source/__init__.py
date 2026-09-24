@@ -11,7 +11,7 @@ def column_hints(sf: Salesforce, sobject: str):
     columns = {}
     for f in meta["fields"]:
         if f["type"] in ("currency", "double", "percent"):
-            columns[f["name"]] = {"data_type": "decimal", "precision": 18, "scale": 2}
+            columns[f["name"]] = {"data_type": "decimal", "precision": f["precision"], "scale": f["scale"]}
         elif f["type"] == "datetime":
             columns[f["name"]] = {"data_type": "timestamp", "precision": 7, "timezone": False}
         elif 0 < f["length"] <= 4000: # mssql max text size
