@@ -1,0 +1,37 @@
+{
+    "recordtypeid": {
+        "name": "recordTypeId",
+        "data_type": "text"
+    },
+    "recordid": {
+        "name": "recordId",
+        "data_type": "bigint"
+    },
+    "name": {
+        "name": "name",
+        "data_type": "text"
+    },
+    "deleteddate": {
+        "name": "deletedDate",
+        "data_type": "timestamp",
+        "precision": 7,
+        "timezone": false,
+        "x-annotation-xform": "TO_CHAR(deleteddate, 'YYYY-MM-DD HH24:MI:SS')"
+    },
+    "deletedby": {
+        "name": "deletedBy",
+        "data_type": "bigint"
+    },
+    "iscustomlist": {
+        "name": "isCustomList",
+        "data_type": "bool"
+    },
+    "iscustomrecord": {
+        "name": "isCustomRecord",
+        "data_type": "bool"
+    },
+    "iscustomtransaction": {
+        "name": "isCustomTransaction",
+        "data_type": "bool"
+    }
+}

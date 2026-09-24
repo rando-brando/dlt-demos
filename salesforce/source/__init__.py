@@ -1,38 +1,7 @@
 import dlt
-import duckdb
-import io
 from simple_salesforce import Salesforce
 
-
-def column_hints(sf: Salesforce, sobject: str):
-    """Return dlt column hints from /describe endpoint"""
-    meta = getattr(sf, sobject).describe()
-
-    columns = {}
-    for f in meta["fields"]:
-        if f["type"] in ("currency", "double", "percent"):
-            columns[f["name"]] = {"data_type": "decimal", "precision": f["precision"], "scale": f["scale"]}
-        elif f["type"] == "datetime":
-            columns[f["name"]] = {"data_type": "timestamp", "precision": 7, "timezone": False}
-        elif 0 < f["length"] <= 4000: # mssql max text size
-            columns[f["name"]] = {"data_type": "text", "precision": f["length"]}
-        elif f["type"] not in ("address", "location"):
-            columns[f["name"]] = {}
-
-    return columns
-
-
-def soql_query(sf: Salesforce, sobject: str, columns: dict, cursor: str = None, last_value: str = None):
-        """Bulk-query an SObject, using query_all to include deleted rows."""
-
-        soql = "SELECT {fields} FROM {sobject}".format(fields=", ".join(columns.keys()), sobject=sobject)
-        if cursor and last_value:
-            soql += f" WHERE {cursor} > {last_value}"
-
-        con = duckdb.connect(":memory:")
-        for csv_chunk in getattr(sf.bulk2, sobject).query_all(soql):
-            page = con.read_csv(io.StringIO(csv_chunk), all_varchar=True)
-            yield page.arrow()
+from source.helpers import metadata_hints, soql_query
 
 
 @dlt.source(name="salesforce")
@@ -51,7 +20,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     )
     def record_type():
         sobject = dlt.current.resource_name()
-        columns = column_hints(sf, sobject)
+        columns = metadata_hints(sf, sobject)
         for items in soql_query(sf, sobject, columns):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
@@ -66,7 +35,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     )
     def account(incremental=dlt.sources.incremental("SystemModstamp",initial_value=None)):
         sobject = dlt.current.resource_name()
-        columns = column_hints(sf, sobject)
+        columns = metadata_hints(sf, sobject)
         for items in soql_query(sf, sobject, columns, "SystemModstamp", incremental.last_value):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
@@ -78,7 +47,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     )
     def contact(incremental=dlt.sources.incremental("CreatedDate", initial_value=None)):
         sobject = dlt.current.resource_name()
-        columns = column_hints(sf, sobject)
+        columns = metadata_hints(sf, sobject)
         for items in soql_query(sf, sobject, columns, "CreatedDate", incremental.last_value):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
@@ -90,7 +59,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     )
     def lead(incremental=dlt.sources.incremental("SystemModstamp", initial_value=None)):
         sobject = dlt.current.resource_name()
-        columns = column_hints(sf, sobject)
+        columns = metadata_hints(sf, sobject)
         for items in soql_query(sf, sobject, columns, "SystemModstamp", incremental.last_value):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
@@ -102,7 +71,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     )
     def opportunity(incremental=dlt.sources.incremental("SystemModstamp",initial_value=None)):
         sobject = dlt.current.resource_name()
-        columns = column_hints(sf, sobject)
+        columns = metadata_hints(sf, sobject)
         for items in soql_query(sf, sobject, columns, "SystemModstamp", incremental.last_value):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 

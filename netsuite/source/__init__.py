@@ -1,39 +1,8 @@
 import dlt
 from dlt.sources.helpers.rest_client import RESTClient
-from dlt.sources.helpers.rest_client.paginators import OffsetPaginator
 
+from source.helpers import file_hints, metadata_hints, suiteql_query
 from source.auth import OAuth1Auth
-
-
-def suiteql_query(
-    client: RESTClient,
-    resource: str,
-    cursor: str = None,
-    last_value: str = None,
-    suiteql: bool = False
-):
-    """Page through resource via NetSuite's SuiteQL endpoint."""
-    if suiteql:
-        with open(f"suiteql/{resource}.sql", "r", encoding="utf-8") as file:
-            suiteql = file.read()
-        print(f"INFO: Suiteql file loaded for resource {resource}.", end="\n\n")
-    else:
-        suiteql = f"SELECT * FROM {resource}"
-        print(f"INFO: No Suiteql file provided for {resource}. Defaulting to SELECT *.", end="\n\n")
-    
-    if cursor and last_value:
-        if cursor == 'lastmodfieddate':
-            last_value = f"TO_TIMESTAMP('{last_value}', 'YYYY-MM-DD HH24:MI:SS')" # convert to compatible timestamp
-        suiteql += f" WHERE {cursor} > {last_value}"
-    
-    yield from client.paginate(
-        "query/v1/suiteql",
-        method="POST",
-        headers={"Prefer": "transient", "Content-Type": "application/json"},
-        json={"q": suiteql},
-        data_selector="items",
-        paginator=OffsetPaginator(limit=1000, total_path=None, has_more_path="hasMore"),
-    )
 
 
 @dlt.source(name="netsuite")
@@ -46,78 +15,116 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     # FULL LOAD (replace)
     # ─────────────────────────────────────────────
     @dlt.resource(
-        name="account",
+        name="Account",
         write_disposition="replace",
-        primary_key="id",
-        columns={"id": {"data_type": "bigint", "unique": True}}
+        primary_key="id"
     )
     def account():
-        yield from suiteql_query(client, "account")
-
-
-    @dlt.resource(
-        name="department",
-        write_disposition="replace",
-        primary_key="id",
-        columns={"id": {"data_type": "bigint", "unique": True}}
-    )
-    def department():
-        yield from suiteql_query(client, "department")
-
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
-        name="subsidiary",
+        name="Currency",
         write_disposition="replace",
-        primary_key="id",
-        columns={"id": {"data_type": "bigint", "unique": True}}
-    )
-    def subsidiary():
-        yield from suiteql_query(client, "subsidiary")
-
-
-    @dlt.resource(
-        name="currency",
-        write_disposition="replace",
-        primary_key="id",
-        columns={"id": {"data_type": "bigint", "unique": True}}
+        primary_key="id"
     )
     def currency():
-        yield from suiteql_query(client, "currency")
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="Department",
+        write_disposition="replace",
+        primary_key="id"
+    )
+    def department():
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="Subsidiary",
+        write_disposition="replace",
+        primary_key="id"
+    )
+    def subsidiary():
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     # ─────────────────────────────────────────────
     # INCREMENTAL (merge)
     # ─────────────────────────────────────────────
     @dlt.resource(
-        name="customer",
+        name="Customer",
         write_disposition="merge",
-        primary_key="id",
-        columns={
-            "id": {"data_type": "bigint", "unique": True},
-            "lastmodifieddate": {"data_type": "timestamp", "precision": 7, "timezone": False}
-        }
+        primary_key="id"
     )
     def customer(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
-        yield from suiteql_query(client, "customer", "lastmodifieddate", incremental.last_value, True)
-
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns, "lastmodifieddate", incremental.last_value):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
-        name="job",
+        name="CustomerSubsidiaryRelationship",
         write_disposition="merge",
-        primary_key="id",
-        columns={
-            "id": {"data_type": "bigint", "unique": True},
-            "lastmodifieddate": {"data_type": "timestamp", "precision": 7, "timezone": False}
-        }
+        primary_key="id"
+    )
+    def customer_subsidiary_relationship(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns, "lastmodifieddate", incremental.last_value):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="DeletedRecord",
+        write_disposition="merge",
+        primary_key={"recordTypeId", "recordId"}
+    )
+    def deleted_record(incremental=dlt.sources.incremental("deleteddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = file_hints("hints/DeletedRecord.json")
+        for items in suiteql_query(client, resource, columns, "deleteddate", incremental.last_value):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="Job",
+        write_disposition="merge",
+        primary_key="id"
     )
     def job(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
-        yield from suiteql_query(client, "job", "lastmodifieddate", incremental.last_value, True)
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns, "lastmodifieddate", incremental.last_value):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="TransactionLineLink",
+        write_disposition="merge",
+        primary_key={"nextDoc", "nextLine", "previousDoc", "previousLine"}
+    )
+    def transaction_line_link(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
+        #resource = dlt.current.resource_name()
+        columns = file_hints("hints/TransactionLineLink.json")
+        for items in suiteql_query(client, "NextTransactionLineLink", columns, "lastmodifieddate", incremental.last_value):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
 
     return (
         account,
-        department,
-        subsidiary,
-        customer,
         currency,
+        customer,
+        customer_subsidiary_relationship,
+        deleted_record,
+        department,
         job,
+        subsidiary,
+        transaction_line_link,
     )

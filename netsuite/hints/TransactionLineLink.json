@@ -1,0 +1,45 @@
+{
+    "discount": {
+        "name": "discount",
+        "data_type": "double"
+    },
+    "foreignamount": {
+        "name": "foreignAmount",
+        "data_type": "double"
+    },
+    "lastmodifieddate": {
+        "name": "lastModifiedDate",
+        "data_type": "timestamp",
+        "precision": 7,
+        "timezone": false,
+        "x-annotation-xform": "TO_CHAR(lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')"
+    },
+    "linktype": {
+        "name": "linkType",
+        "data_type": "text"
+    },
+    "nextdoc": {
+        "name": "nextDoc",
+        "data_type": "bigint"
+    },
+    "nextline": {
+        "name": "nextLine",
+        "data_type": "bigint"
+    },
+    "nexttype": {
+        "name": "nextType",
+        "data_type": "text"
+    },
+    "previousdoc": {
+        "name": "previousDoc",
+        "data_type": "bigint"
+    },
+    "previousline": {
+        "name": "previousLine",
+        "data_type": "bigint"
+    },
+    "previoustype": {
+        "name": "previousType",
+        "data_type": "text"
+    }
+}
