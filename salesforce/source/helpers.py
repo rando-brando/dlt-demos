@@ -27,14 +27,13 @@ def soql_query(
         sf: Salesforce,
         sobject: str,
         columns: dict,
-        cursor: str = None,
-        last_value: str = None
+        incremental=None
     ):
     """Bulk-query an SObject, using query_all to include deleted rows."""
 
     soql = "SELECT {fields} FROM {sobject}".format(fields=", ".join(columns.keys()), sobject=sobject)
-    if cursor and last_value:
-        soql += f" WHERE {cursor} > {last_value}"
+    if incremental and incremental.last_value:
+        soql += f" WHERE {incremental.cursor_path} > {incremental.last_value}"
 
     con = duckdb.connect(":memory:")
     for csv_chunk in getattr(sf.bulk2, sobject).query_all(soql):

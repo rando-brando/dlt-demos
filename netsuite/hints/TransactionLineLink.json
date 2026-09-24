@@ -1,8 +1,4 @@
 {
-    "discount": {
-        "name": "discount",
-        "data_type": "double"
-    },
     "foreignamount": {
         "name": "foreignAmount",
         "data_type": "double"

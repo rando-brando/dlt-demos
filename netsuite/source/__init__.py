@@ -22,7 +22,18 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def account():
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
-        for items in suiteql_query(client, resource, columns):
+        for items in suiteql_query(client, resource, columns, "id"):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="AccountingPeriod",
+        write_disposition="replace",
+        primary_key="id"
+    )
+    def accounting_period():
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns, "id"):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -33,7 +44,7 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def currency():
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
-        for items in suiteql_query(client, resource, columns):
+        for items in suiteql_query(client, resource, columns, "id"):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -44,7 +55,7 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def department():
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
-        for items in suiteql_query(client, resource, columns):
+        for items in suiteql_query(client, resource, columns, "id"):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -55,7 +66,7 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def subsidiary():
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
-        for items in suiteql_query(client, resource, columns):
+        for items in suiteql_query(client, resource, columns, "id"):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     # ─────────────────────────────────────────────
@@ -69,7 +80,7 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def customer(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
-        for items in suiteql_query(client, resource, columns, "lastmodifieddate", incremental.last_value):
+        for items in suiteql_query(client, resource, columns, "id", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -80,18 +91,29 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def customer_subsidiary_relationship(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
-        for items in suiteql_query(client, resource, columns, "lastmodifieddate", incremental.last_value):
+        for items in suiteql_query(client, resource, columns, "id", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
         name="DeletedRecord",
         write_disposition="merge",
-        primary_key={"recordTypeId", "recordId"}
+        primary_key=("recordtypeid", "recordid")
     )
     def deleted_record(incremental=dlt.sources.incremental("deleteddate", initial_value=None)):
         resource = dlt.current.resource_name()
         columns = file_hints("hints/DeletedRecord.json")
-        for items in suiteql_query(client, resource, columns, "deleteddate", incremental.last_value):
+        for items in suiteql_query(client, resource, columns, "recordtypeid, recordid", incremental):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="Employee",
+        write_disposition="merge",
+        primary_key=("id")
+    )
+    def employee(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns, "id", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -102,28 +124,30 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def job(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
-        for items in suiteql_query(client, resource, columns, "lastmodifieddate", incremental.last_value):
+        for items in suiteql_query(client, resource, columns, "id", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
         name="TransactionLineLink",
         write_disposition="merge",
-        primary_key={"nextDoc", "nextLine", "previousDoc", "previousLine"}
+        primary_key=("nextdoc", "nextline", "previousdoc", "previousline")
     )
     def transaction_line_link(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
-        #resource = dlt.current.resource_name()
+        resource = dlt.current.resource_name()
         columns = file_hints("hints/TransactionLineLink.json")
-        for items in suiteql_query(client, "NextTransactionLineLink", columns, "lastmodifieddate", incremental.last_value):
+        for items in suiteql_query(client, f"Next{resource}", columns, "previousdoc, previousline", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
 
     return (
         account,
+        accounting_period,
         currency,
         customer,
         customer_subsidiary_relationship,
         deleted_record,
         department,
+        employee,
         job,
         subsidiary,
         transaction_line_link,

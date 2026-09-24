@@ -71,8 +71,8 @@ def suiteql_query(
         client: RESTClient,
         resource: str,
         columns: dict,
-        cursor: str = None,
-        last_value: str = None
+        sort: str = None,
+        incremental=None
     ):
     """Page through resource via NetSuite's SuiteQL endpoint."""
 
@@ -82,8 +82,9 @@ def suiteql_query(
         for f in columns
     ]
     suiteql = "SELECT {fields} FROM {resource}".format(fields=", ".join(fields), resource=resource)
-    
-    if cursor and last_value:
+
+    if incremental and incremental.last_value:
+        cursor, last_value = incremental.cursor_path, incremental.last_value
         data_type = columns[cursor]["data_type"]
         if data_type == "date":
             last_value = f"TO_DATE('{last_value}', 'YYYY-MM-DD')" # convert to compatible date
@@ -91,9 +92,9 @@ def suiteql_query(
             last_value = f"TO_TIMESTAMP('{last_value}', 'YYYY-MM-DD HH24:MI:SS')" # convert to compatible timestamp
         suiteql += f" WHERE {cursor} > {last_value}"
 
-    if "id" in columns.keys():
-        suiteql += " ORDER BY id" # supports efficient queries
-    
+    if sort:
+        suiteql += f" ORDER BY {sort}"
+
     yield from client.paginate(
         "query/v1/suiteql",
         method="POST",

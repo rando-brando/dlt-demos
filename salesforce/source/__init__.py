@@ -34,7 +34,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     def account(incremental=dlt.sources.incremental("SystemModstamp",initial_value=None)):
         sobject = dlt.current.resource_name()
         columns = metadata_hints(sf, sobject)
-        for items in soql_query(sf, sobject, columns, "SystemModstamp", incremental.last_value):
+        for items in soql_query(sf, sobject, columns, incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -45,7 +45,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     def contact(incremental=dlt.sources.incremental("CreatedDate", initial_value=None)):
         sobject = dlt.current.resource_name()
         columns = metadata_hints(sf, sobject)
-        for items in soql_query(sf, sobject, columns, "CreatedDate", incremental.last_value):
+        for items in soql_query(sf, sobject, columns, incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -56,7 +56,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     def lead(incremental=dlt.sources.incremental("SystemModstamp", initial_value=None)):
         sobject = dlt.current.resource_name()
         columns = metadata_hints(sf, sobject)
-        for items in soql_query(sf, sobject, columns, "SystemModstamp", incremental.last_value):
+        for items in soql_query(sf, sobject, columns, incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -67,7 +67,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     def opportunity(incremental=dlt.sources.incremental("SystemModstamp",initial_value=None)):
         sobject = dlt.current.resource_name()
         columns = metadata_hints(sf, sobject)
-        for items in soql_query(sf, sobject, columns, "SystemModstamp", incremental.last_value):
+        for items in soql_query(sf, sobject, columns, incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
 
