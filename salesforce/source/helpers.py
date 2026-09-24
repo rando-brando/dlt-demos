@@ -9,7 +9,9 @@ def metadata_hints(sf: Salesforce, sobject: str):
 
     hints = {}
     for fields in meta["fields"]:
-        if fields["type"] in ("currency", "double", "percent"):
+        if fields["name"] == "Id":
+            hints["Id"] == {"data_type": "text", "precision": 18, "unique": True}
+        elif fields["type"] in ("currency", "double", "percent"):
             hints[fields["name"]] = {"data_type": "decimal", "precision": fields["precision"], "scale": fields["scale"]}
         elif fields["type"] == "datetime":
             hints[fields["name"]] = {"data_type": "timestamp", "precision": 7, "timezone": False}

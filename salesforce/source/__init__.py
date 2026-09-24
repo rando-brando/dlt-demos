@@ -15,8 +15,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     @dlt.resource(
         name="RecordType",
         write_disposition="replace",
-        primary_key="Id",
-        columns={"Id": {"data_type": "text", "precision": 18, "unique": True}}
+        primary_key="Id"
     )
     def record_type():
         sobject = dlt.current.resource_name()
@@ -30,8 +29,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     @dlt.resource(
         name="Account",
         write_disposition="merge",
-        primary_key="Id",
-        columns={"Id": {"data_type": "text", "precision": 18, "unique": True}}
+        primary_key="Id"
     )
     def account(incremental=dlt.sources.incremental("SystemModstamp",initial_value=None)):
         sobject = dlt.current.resource_name()
@@ -42,8 +40,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     @dlt.resource(
         name="Contact",
         write_disposition={"disposition": "merge", "strategy": "insert-only"},
-        primary_key="Id",
-        columns={"Id": {"data_type": "text", "precision": 18, "unique": True}}
+        primary_key="Id"
     )
     def contact(incremental=dlt.sources.incremental("CreatedDate", initial_value=None)):
         sobject = dlt.current.resource_name()
@@ -54,8 +51,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     @dlt.resource(
         name="Lead",
         write_disposition="merge",
-        primary_key="Id",
-        columns={"Id": {"data_type": "text", "precision": 18, "unique": True}}
+        primary_key="Id"
     )
     def lead(incremental=dlt.sources.incremental("SystemModstamp", initial_value=None)):
         sobject = dlt.current.resource_name()
@@ -66,8 +62,7 @@ def salesforce_source(credentials: dict = dlt.secrets.value):
     @dlt.resource(
         name="Opportunity",
         write_disposition="merge",
-        primary_key="Id",
-        columns={"Id": {"data_type": "text", "precision": 18, "unique": True}}
+        primary_key="Id"
     )
     def opportunity(incremental=dlt.sources.incremental("SystemModstamp",initial_value=None)):
         sobject = dlt.current.resource_name()
