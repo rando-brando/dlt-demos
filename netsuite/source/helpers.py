@@ -29,7 +29,8 @@ def metadata_hints(client: RESTClient, resource: str):
             "name": name, # column name
             "lname": name.lower(),# lowercase column name
             "type": field.get("type"), # field type
-            "format": field.get("format") # data type
+            "format": field.get("format"), # data type
+            "properties": field.get("properties") # object properties
         }
         for name, field in meta.get("properties").items() # fields meta
         if name in meta.get("x-ns-filterable") # selectable fields list
@@ -47,20 +48,24 @@ def metadata_hints(client: RESTClient, resource: str):
             if field["format"] == "date-time":
                 hints[field["lname"]]["x-annotation-xform"] = f"TO_CHAR({field["name"]}, 'YYYY-MM-DD HH24:MI:SS')"
         elif field["type"] == "object":
-            # the object's internal id
-            hints[field["lname"] + "id"] = {
-                "name": field["name"] + "Id",
-                "data_type": "bigint",
-                "x-annotation-xform": f"{field["name"]}" # suiteql transformation
-            }
-            # the object's text value
-            hints[field["lname"]] = {
-                "name": field["name"],
-                "data_type": "text",
-                "x-annotation-xform": f"BUILTIN.DF({field["name"]})" # suiteql transformation
-            }
+            # objects with "links" require BUILTIN.DF to access thier text value
+            if field["properties"].get("links"):
+                # the object's internal id
+                hints[field["lname"] + "id"] = {
+                    "name": field["name"] + "Id",
+                    "data_type": "bigint",
+                    "x-annotation-xform": f"{field["name"]}" # suiteql transformation
+                }
+                # the object's text value
+                hints[field["lname"]] = {
+                    "name": field["name"],
+                    "data_type": "text",
+                    "x-annotation-xform": f"BUILTIN.DF({field["name"]})" # suiteql transformation
+                }
+            else:
+                hints[field["lname"]] = {"name": field["name"], "data_type": "text"}
         elif field["type"] == "string":
-            hints[field["lname"]] = {"name": field["name"], "data_type": "text", "precision": 4000} # mssql max text size
+            hints[field["lname"]] = {"name": field["name"], "data_type": "text"}
         else:
             hints[field["lname"]] = {"name": field["name"]} | DATA_TYPE_HINTS.get(field["type"])
 
