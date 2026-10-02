@@ -2,14 +2,19 @@ import dlt
 from dlt.sources.helpers.rest_client import RESTClient
 
 from source.helpers import file_hints, metadata_hints, suiteql_query
-from source.auth import OAuth1Auth
+from source.auth import NetsuiteOAuth2, NetsuiteOAuth1
 
 
 @dlt.source(name="netsuite")
 def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt.secrets.value):
     """Netsuite source and resources"""
     base_url = f"https://{account_id}.suitetalk.api.netsuite.com/services/rest"
-    client = RESTClient(base_url=base_url, auth=OAuth1Auth(**credentials))
+    auth_url = f"{base_url}/auth/oauth2/v1/token"
+
+    auth = NetsuiteOAuth2(auth_endpoint=auth_url, scopes="rest_webservices", **credentials) # OAuth 2.0 option
+    #auth=NetsuiteOAuth1(**credentials) # OAuth 1.0 option (deprecated in 2027)
+
+    client = RESTClient(base_url=base_url, auth=auth)
 
     # ─────────────────────────────────────────────
     # FULL LOAD (replace)

@@ -6,7 +6,7 @@ Currently included:
 
 | Source | API used | Auth | Notable resources |
 |---|---|---|---|
-| [`netsuite/`](netsuite) | NetSuite REST + SuiteQL | OAuth 1.0 (HMAC-SHA256) | `Account`, `Customer`, `Employee`, `Transaction`, `TransactionLine`, ... |
+| [`netsuite/`](netsuite) | NetSuite REST + SuiteQL | OAuth 2.0 (JWT client assertion, PS256) | `Account`, `Customer`, `Employee`, `Transaction`, `TransactionLine`, ... |
 | [`salesforce/`](salesforce) | Salesforce Bulk API 2.0 (via `simple-salesforce`) | consumer key/secret + domain | `Account`, `Contact`, `Lead`, `Opportunity`, `RecordType` |
 
 Both pipelines share the same shape:
@@ -20,7 +20,7 @@ Both pipelines share the same shape:
 - Python >= 3.13
 - A destination dlt supports (defaults to local [DuckDB](https://duckdb.org/) in these demos — see `dlt`'s [destination docs](https://dlthub.com/docs/dlt-ecosystem/destinations/) to point at something like Azure SQL/MSSQL, Snowflake, BigQuery, etc.)
 - Credentials for whichever source(s) you intend to run:
-  - **NetSuite**: an integration record + access token with `consumer_key`, `consumer_secret`, `token_key`, `token_secret`, plus your account's `realm` and `account_id`.
+  - **NetSuite**: an integration record configured for OAuth 2.0 client credentials (M2M), with an uploaded certificate giving you `client_id`, `private_key` (PEM), and `kid`, plus your account's `account_id`.
   - **Salesforce**: a connected app's `consumer_key`/`consumer_secret` and your org's `domain` (e.g. `yourcompany.my`).
 
 ## Setup
@@ -41,11 +41,9 @@ Each source directory has its own `.dlt/` folder with a `config.toml` (non-secre
 
 ```toml
 [sources.netsuite.credentials]
-consumer_key = "..."
-consumer_secret = "..."
-token_key = "..."
-token_secret = "..."
-realm = "..."
+client_id = "..."
+private_key = "..."
+kid = "..."
 
 [sources.netsuite]
 account_id = "..."
