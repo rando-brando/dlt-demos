@@ -1,0 +1,105 @@
+{
+    "altname": {
+        "data_type": "text"
+    },
+    "comments": {
+        "data_type": "text"
+    },
+    "contact": {
+        "data_type": "bigint"
+    },
+    "customer": {
+        "data_type": "bigint"
+    },
+    "datecreated": {
+        "data_type": "timestamp",
+        "precision": 7,
+        "timezone": false,
+        "x-annotation-xform": "TO_CHAR(datecreated, 'YYYY-MM-DD HH24:MI:SS')"
+    },
+    "email": {
+        "data_type": "text"
+    },
+    "employee": {
+        "data_type": "bigint"
+    },
+    "entityid": {
+        "data_type": "text"
+    },
+    "entitynumber": {
+        "data_type": "text"
+    },
+    "entitytitle": {
+        "data_type": "text"
+    },
+    "externalid": {
+        "data_type": "text"
+    },
+    "firstname": {
+        "data_type": "text"
+    },
+    "genericresource": {
+        "data_type": "bigint"
+    },
+    "group": {
+        "data_type": "bigint"
+    },
+    "id": {
+        "data_type": "bigint",
+        "unique": true
+    },
+    "isinactive": {
+        "data_type": "bool"
+    },
+    "isperson": {
+        "data_type": "bool"
+    },
+    "laborcost": {
+        "data_type": "double"
+    },
+    "lastmodifieddate": {
+        "data_type": "timestamp",
+        "precision": 7,
+        "timezone": false,
+        "x-annotation-xform": "TO_CHAR(lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')"
+    },
+    "lastname": {
+        "data_type": "text"
+    },
+    "middlename": {
+        "data_type": "text"
+    },
+    "mobilephone": {
+        "data_type": "text"
+    },
+    "othername": {
+        "data_type": "text"
+    },
+    "parent": {
+        "data_type": "bigint"
+    },
+    "phone": {
+        "data_type": "text"
+    },
+    "project": {
+        "data_type": "bigint"
+    },
+    "projecttemplate": {
+        "data_type": "bigint"
+    },
+    "salutation": {
+        "data_type": "text"
+    },
+    "title": {
+        "data_type": "text"
+    },
+    "toplevelparent": {
+        "data_type": "bigint"
+    },
+    "type": {
+        "data_type": "text"
+    },
+    "vendor": {
+        "data_type": "bigint"
+    }
+}

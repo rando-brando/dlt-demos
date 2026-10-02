@@ -102,7 +102,7 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def deleted_record(incremental=dlt.sources.incremental("deleteddate", initial_value=None)):
         resource = dlt.current.resource_name()
         columns = file_hints("hints/DeletedRecord.json")
-        for items in suiteql_query(client, resource, columns, "recordtypeid, recordid", incremental):
+        for items in suiteql_query(client, resource, columns, "deleteddate, recordid", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -113,6 +113,17 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def employee(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
         resource = dlt.current.resource_name()
         columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns, "id", incremental):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="Entity",
+        write_disposition="merge",
+        primary_key="id"
+    )
+    def entity(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = file_hints("hints/Entity.json")
         for items in suiteql_query(client, resource, columns, "id", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
@@ -128,6 +139,55 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
+        name="TimeBill",
+        write_disposition="merge",
+        primary_key="id"
+    )
+    def time_bill(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = metadata_hints(client, resource)
+        for items in suiteql_query(client, resource, columns, "id", incremental):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="Transaction",
+        write_disposition="merge",
+        primary_key="id"
+    )
+    def transaction(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = file_hints("hints/Transaction.json")
+        for items in suiteql_query(client, resource, columns, "id", incremental):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="TransactionAccountingLine",
+        write_disposition="merge",
+        primary_key=("transaction", "transactionline", "accountingbook")
+    )
+    def transaction_accounting_line(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = file_hints("hints/TransactionAccountingLine.json")
+        for items in suiteql_query(client, resource, columns, "transaction, transactionline", incremental):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
+        name="TransactionLine",
+        write_disposition="merge",
+        primary_key="uniquekey"
+    )
+    def transaction_line(incremental=dlt.sources.incremental("linelastmodifieddate", initial_value=None)):
+        resource = dlt.current.resource_name()
+        columns = file_hints("hints/TransactionLine.json")
+        for items in suiteql_query(client, resource, columns, "transaction, id", incremental):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+        # on delta loads also run a cross filter on transaction for modified rows
+        if incremental.start_value and not incremental.end_value:
+            cross_filter = {"ftable": "transaction", "fkey": "transaction", "fcursor": "lastmodifieddate"}
+            for items in suiteql_query(client, resource, columns, "transaction, id", incremental, cross_filter):
+                yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+
+    @dlt.resource(
         name="TransactionLineLink",
         write_disposition="merge",
         primary_key=("nextdoc", "nextline", "previousdoc", "previousline")
@@ -135,7 +195,7 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
     def transaction_line_link(incremental=dlt.sources.incremental("lastmodifieddate", initial_value=None)):
         resource = dlt.current.resource_name()
         columns = file_hints("hints/TransactionLineLink.json")
-        for items in suiteql_query(client, f"Next{resource}", columns, "previousdoc, previousline", incremental):
+        for items in suiteql_query(client, f"Next{resource}", columns, "previousdoc, nextdoc, previousline, nextline", incremental):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
 
@@ -148,7 +208,12 @@ def netsuite_source(credentials: dict = dlt.secrets.value, account_id: str = dlt
         deleted_record,
         department,
         employee,
+        entity,
         job,
         subsidiary,
+        time_bill,
+        transaction,
+        transaction_accounting_line,
+        transaction_line,
         transaction_line_link,
     )

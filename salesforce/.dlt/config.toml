@@ -1,3 +1,6 @@
 [runtime]
 log_level="INFO"
 dlthub_telemetry = false
+
+[destination.duckdb]
+destination_name = "salesforce"

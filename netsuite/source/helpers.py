@@ -1,6 +1,8 @@
+import json
+
+from dlt.common import logger
 from dlt.sources.helpers.rest_client import RESTClient
 from dlt.sources.helpers.rest_client.paginators import OffsetPaginator
-import json
 
 
 def file_hints(path: str):
@@ -27,7 +29,6 @@ def metadata_hints(client: RESTClient, resource: str):
     fields = [
         {
             "name": name, # column name
-            "lname": name.lower(),# lowercase column name
             "type": field.get("type"), # field type
             "format": field.get("format"), # data type
             "properties": field.get("properties") # object properties
@@ -35,41 +36,50 @@ def metadata_hints(client: RESTClient, resource: str):
         for name, field in meta.get("properties").items() # fields meta
         if name in meta.get("x-ns-filterable") # selectable fields list
     ]
+    fields.sort(key=lambda f: f["name"].lower() != "id") # id first
 
     hints = {}
     for field in fields:
-        if field["name"] == "id":
-            hints[field["lname"]] = {"name": field["name"], "data_type": "bigint", "unique": True}
+        name = field["name"].lower()
+        if name == "id":
+            hints[name] = {"data_type": "bigint", "unique": True}
         elif field["format"]:
-            hints[field["lname"]] = {"name": field["name"]} | DATA_TYPE_HINTS.get(field["format"])
+            hints[name] = {} | DATA_TYPE_HINTS.get(field["format"])
             # suiteql transformations
             if field["format"] == "date":
-                hints[field["lname"]]["x-annotation-xform"] = f"TO_CHAR({field["name"]}, 'YYYY-MM-DD')"
+                hints[name]["x-annotation-xform"] = f"TO_CHAR({name}, 'YYYY-MM-DD')"
             if field["format"] == "date-time":
-                hints[field["lname"]]["x-annotation-xform"] = f"TO_CHAR({field["name"]}, 'YYYY-MM-DD HH24:MI:SS')"
+                hints[name]["x-annotation-xform"] = f"TO_CHAR({name}, 'YYYY-MM-DD HH24:MI:SS')"
         elif field["type"] == "object":
             # objects with "links" require BUILTIN.DF to access thier text value
-            if field["properties"].get("links"):
+            if field["properties"].get("links") and name[-3:] != "_id":
                 # the object's internal id
-                hints[field["lname"] + "id"] = {
-                    "name": field["name"] + "Id",
-                    "data_type": "bigint",
-                    "x-annotation-xform": f"{field["name"]}" # suiteql transformation
+                hints[name + "_id"] = {
+                    "data_type": "text",
+                    "x-annotation-xform": name # suiteql transformation
                 }
                 # the object's text value
-                hints[field["lname"]] = {
-                    "name": field["name"],
+                hints[name] = {
                     "data_type": "text",
-                    "x-annotation-xform": f"BUILTIN.DF({field["name"]})" # suiteql transformation
+                    "x-annotation-xform": f"BUILTIN.DF({name})" # suiteql transformation
                 }
             else:
-                hints[field["lname"]] = {"name": field["name"], "data_type": "text"}
+                hints[name] = {"data_type": "text"}
         elif field["type"] == "string":
-            hints[field["lname"]] = {"name": field["name"], "data_type": "text"}
+            hints[name] = {"data_type": "text"}
         else:
-            hints[field["lname"]] = {"name": field["name"]} | DATA_TYPE_HINTS.get(field["type"])
+            hints[name] = {} | DATA_TYPE_HINTS.get(field["type"], {})
 
     return hints
+
+
+def _format_value(data_type: str, value):
+    """Format an incremental cursor value for inline use in a SuiteQL WHERE clause."""
+    if data_type == "date":
+        return f"TO_DATE('{value}', 'YYYY-MM-DD')" # convert to compatible date
+    if data_type == "timestamp":
+        return f"TO_TIMESTAMP('{value}', 'YYYY-MM-DD HH24:MI:SS')" # convert to compatible timestamp
+    return value
 
 
 def suiteql_query(
@@ -77,28 +87,41 @@ def suiteql_query(
         resource: str,
         columns: dict,
         sort: str = None,
-        incremental=None
+        incremental = None,
+        xfilter: dict = None # cross resource filter
     ):
     """Page through resource via NetSuite's SuiteQL endpoint."""
 
     fields = [
-        f'{columns[f]["x-annotation-xform"]} AS {f}' # xform AS alias
-        if "x-annotation-xform" in columns[f] else f
+        f'\t{columns[f]["x-annotation-xform"]} AS {f}' # xform AS alias
+        if "x-annotation-xform" in columns[f] else f'\t{f}'
         for f in columns
     ]
-    suiteql = "SELECT {fields} FROM {resource}".format(fields=", ".join(fields), resource=resource)
+    suiteql = "SELECT\n{fields}\nFROM {resource}".format(fields=",\n".join(fields), resource=resource)
 
-    if incremental and incremental.last_value:
-        cursor, last_value = incremental.cursor_path, incremental.last_value
+    if incremental:
+        cursor = incremental.cursor_path
         data_type = columns[cursor]["data_type"]
-        if data_type == "date":
-            last_value = f"TO_DATE('{last_value}', 'YYYY-MM-DD')" # convert to compatible date
-        if data_type == "timestamp":
-            last_value = f"TO_TIMESTAMP('{last_value}', 'YYYY-MM-DD HH24:MI:SS')" # convert to compatible timestamp
-        suiteql += f" WHERE {cursor} > {last_value}"
+
+        if xfilter:
+            suiteql += f"""\nWHERE {xfilter["fkey"]} IN (
+                        SELECT id
+                        FROM {xfilter["ftable"]}
+                        WHERE {xfilter["fcursor"]} > {_format_value(data_type, incremental.last_value)}
+                    )"""
+        else:
+            conditions = []
+            if incremental.last_value:
+                conditions.append(f"{cursor} > {_format_value(data_type, incremental.last_value)}")
+            if incremental.end_value:
+                conditions.append(f"{cursor} <= {_format_value(data_type, incremental.end_value)}")
+            if conditions:
+                suiteql += "\nWHERE " + "\nAND ".join(conditions)
 
     if sort:
-        suiteql += f" ORDER BY {sort}"
+        suiteql += f"\nORDER BY {sort}"
+
+    logger.info(f"Generated SuiteQL query string:\n{suiteql}\n")
 
     yield from client.paginate(
         "query/v1/suiteql",
@@ -108,3 +131,13 @@ def suiteql_query(
         data_selector="items",
         paginator=OffsetPaginator(limit=1000, total_path=None, has_more_path="hasMore"),
     )
+
+
+def numeric_max(values):
+    """max() that compares numeric-looking values as numbers (NetSuite returns ids as strings)."""
+    def key(v):
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return v
+    return max(values, key=key)
