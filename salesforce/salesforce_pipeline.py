@@ -10,7 +10,7 @@ def load_resource(resource_name: str, field: str = None, start=None, end=None) -
     """Load a single named resource from Salesforce"""
 
     pipeline = dlt.pipeline(
-        pipeline_name=f"Salesforce_{resource_name}",
+        pipeline_name=f"salesforce_{resource_name}",
         destination="duckdb",
         dataset_name="sfc",
         progress="log"

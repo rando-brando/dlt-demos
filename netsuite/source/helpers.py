@@ -1,8 +1,11 @@
 import json
 
 from dlt.common import logger
+from dlt.common.normalizers.naming.snake_case import NamingConvention as SnakeCaseNamingConvention
 from dlt.sources.helpers.rest_client import RESTClient
 from dlt.sources.helpers.rest_client.paginators import OffsetPaginator
+
+snake_case = SnakeCaseNamingConvention()
 
 
 def file_hints(path: str):
@@ -36,39 +39,40 @@ def metadata_hints(client: RESTClient, resource: str):
         for name, field in meta.get("properties").items() # fields meta
         if name in meta.get("x-ns-filterable") # selectable fields list
     ]
-    fields.sort(key=lambda f: f["name"].lower() != "id") # id first
+    fields.sort(key=lambda f: f["name"] != "id") # id first
 
     hints = {}
     for field in fields:
-        name = field["name"].lower()
+        raw = field["name"] # original (camelCase) name as returned by the metadata catalog
+        name = snake_case.normalize_identifier(raw) # snake_case hint key / output column name
         if name == "id":
-            hints[name] = {"data_type": "bigint", "unique": True}
+            hints[name] = {"data_type": "bigint", "unique": True, "x-transformation": raw}
         elif field["format"]:
-            hints[name] = {} | DATA_TYPE_HINTS.get(field["format"])
+            hints[name] = {"x-transformation": raw} | DATA_TYPE_HINTS.get(field["format"])
             # suiteql transformations
             if field["format"] == "date":
-                hints[name]["x-annotation-xform"] = f"TO_CHAR({name}, 'YYYY-MM-DD')"
+                hints[name]["x-transformation"] = f"TO_CHAR({raw}, 'YYYY-MM-DD')"
             if field["format"] == "date-time":
-                hints[name]["x-annotation-xform"] = f"TO_CHAR({name}, 'YYYY-MM-DD HH24:MI:SS')"
+                hints[name]["x-transformation"] = f"TO_CHAR({raw}, 'YYYY-MM-DD HH24:MI:SS')"
         elif field["type"] == "object":
             # objects with "links" require BUILTIN.DF to access thier text value
             if field["properties"].get("links") and name[-3:] != "_id":
                 # the object's internal id
                 hints[name + "_id"] = {
                     "data_type": "text",
-                    "x-annotation-xform": name # suiteql transformation
+                    "x-transformation": raw # suiteql transformation
                 }
                 # the object's text value
                 hints[name] = {
                     "data_type": "text",
-                    "x-annotation-xform": f"BUILTIN.DF({name})" # suiteql transformation
+                    "x-transformation": f"BUILTIN.DF({raw})" # suiteql transformation
                 }
             else:
-                hints[name] = {"data_type": "text"}
+                hints[name] = {"data_type": "text", "x-transformation": raw}
         elif field["type"] == "string":
-            hints[name] = {"data_type": "text"}
+            hints[name] = {"data_type": "text", "x-transformation": raw}
         else:
-            hints[name] = {} | DATA_TYPE_HINTS.get(field["type"], {})
+            hints[name] = {"x-transformation": raw} | DATA_TYPE_HINTS.get(field["type"], {})
 
     return hints
 
@@ -92,11 +96,7 @@ def suiteql_query(
     ):
     """Page through resource via NetSuite's SuiteQL endpoint."""
 
-    fields = [
-        f'\t{columns[f]["x-annotation-xform"]} AS {f}' # xform AS alias
-        if "x-annotation-xform" in columns[f] else f'\t{f}'
-        for f in columns
-    ]
+    fields = [f'\t{columns[f]["x-transformation"]} AS {f}' for f in columns] # x-transformation AS alias
     suiteql = "SELECT\n{fields}\nFROM {resource}".format(fields=",\n".join(fields), resource=resource)
 
     if incremental:

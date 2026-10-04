@@ -1,0 +1,40 @@
+{
+    "foreign_amount": {
+        "data_type": "double",
+        "x-transformation": "foreignamount"
+    },
+    "last_modified_date": {
+        "data_type": "timestamp",
+        "precision": 7,
+        "timezone": false,
+        "x-transformation": "TO_CHAR(lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')"
+    },
+    "link_type": {
+        "data_type": "text",
+        "x-transformation": "linktype"
+    },
+    "next_doc": {
+        "data_type": "bigint",
+        "x-transformation": "nextdoc"
+    },
+    "next_line": {
+        "data_type": "bigint",
+        "x-transformation": "nextline"
+    },
+    "next_type": {
+        "data_type": "text",
+        "x-transformation": "nexttype"
+    },
+    "previous_doc": {
+        "data_type": "bigint",
+        "x-transformation": "previousdoc"
+    },
+    "previous_line": {
+        "data_type": "bigint",
+        "x-transformation": "previousline"
+    },
+    "previous_type": {
+        "data_type": "text",
+        "x-transformation": "previoustype"
+    }
+}

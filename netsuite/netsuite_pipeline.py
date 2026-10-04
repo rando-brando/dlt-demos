@@ -10,7 +10,7 @@ def load_resource(resource_name: str, field: str = None, start=None, end=None) -
     """Load a single named resource from Netsuite"""
 
     pipeline = dlt.pipeline(
-        pipeline_name=f"Netsuite_{resource_name}",
+        pipeline_name=f"netsuite_{resource_name}",
         destination="duckdb",
         dataset_name="nts",
         progress="log"
