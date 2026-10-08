@@ -9,12 +9,16 @@ from requests_oauthlib import OAuth1
 class NetsuiteOAuth1(AuthConfigBase):
     """OAuth 1.0 (HMAC-SHA256) authenticator."""
 
+    account_id: str = None
+    base_url: str | None = None
     consumer_key: TSecretStrValue = None
     consumer_secret: TSecretStrValue = None
     token_key: TSecretStrValue = None
     token_secret: TSecretStrValue = None
     realm: str = None
 
+    def on_resolved(self) -> None:
+        self.base_url = f"https://{self.account_id}.suitetalk.api.netsuite.com/services/rest"
 
     def __call__(self, request):
         self.oauth = OAuth1(
@@ -32,7 +36,16 @@ class NetsuiteOAuth1(AuthConfigBase):
 class NetsuiteOAuth2(OAuthJWTAuth):
     """NetSuite OAuth 2.0 client credentials grant via signed JWT client assertion (RFC 7523 §2.2)."""
 
+    account_id: str = None
+    auth_endpoint: str | None = None
+    base_url: str | None = None
     kid: str = None
+    scopes: str = "rest_webservices"
+    token: TSecretStrValue | None = None
+
+    def on_resolved(self) -> None:
+        self.base_url = f"https://{self.account_id}.suitetalk.api.netsuite.com/services/rest"
+        self.auth_endpoint = f"{self.base_url}/auth/oauth2/v1/token"
 
     def obtain_token(self) -> None:
         import jwt

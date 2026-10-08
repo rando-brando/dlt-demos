@@ -22,11 +22,13 @@ def metadata_hints(client: RESTClient, resource: str):
 
     DATA_TYPE_HINTS = {
         "boolean": {"data_type": "bool"},
+        "date": {"data_type": "date"},
+        "date-time": {"data_type": "timestamp", "precision": 7, "timezone": False},
         "double": {"data_type": "double"},
         "float": {"data_type": "double"},
         "int64": {"data_type": "bigint"},
-        "date": {"data_type": "date"},
-        "date-time": {"data_type": "timestamp", "precision": 7, "timezone": False}
+        "object": {"data_type": "text", "precision": 4000},
+        "string": {"data_type": "text", "precision": 4000}
     }
 
     fields = [
@@ -48,31 +50,20 @@ def metadata_hints(client: RESTClient, resource: str):
         if name == "id":
             hints[name] = {"data_type": "bigint", "unique": True, "x-transformation": raw}
         elif field["format"]:
-            hints[name] = {"x-transformation": raw} | DATA_TYPE_HINTS.get(field["format"])
+            hints[name] = DATA_TYPE_HINTS.get(field["format"], {}) | {"x-transformation": raw}
             # suiteql transformations
             if field["format"] == "date":
                 hints[name]["x-transformation"] = f"TO_CHAR({raw}, 'YYYY-MM-DD')"
             if field["format"] == "date-time":
                 hints[name]["x-transformation"] = f"TO_CHAR({raw}, 'YYYY-MM-DD HH24:MI:SS')"
-        elif field["type"] == "object":
-            # objects with "links" require BUILTIN.DF to access thier text value
-            if field["properties"].get("links") and name[-3:] != "_id":
-                # the object's internal id
-                hints[name + "_id"] = {
-                    "data_type": "text",
-                    "x-transformation": raw # suiteql transformation
-                }
-                # the object's text value
-                hints[name] = {
-                    "data_type": "text",
-                    "x-transformation": f"BUILTIN.DF({raw})" # suiteql transformation
-                }
-            else:
-                hints[name] = {"data_type": "text", "x-transformation": raw}
-        elif field["type"] == "string":
-            hints[name] = {"data_type": "text", "x-transformation": raw}
+        # objects with "links" require BUILTIN.DF to access their text value
+        elif field["type"] == "object" and field["properties"].get("links") and name[-3:] != "_id":
+            # the object's internal id
+            hints[name + "_id"] = DATA_TYPE_HINTS.get(field["type"], {}) | {"x-transformation": raw}
+            # the object's text value
+            hints[name] = DATA_TYPE_HINTS.get(field["type"], {}) | {"x-transformation": f"BUILTIN.DF({raw})"}
         else:
-            hints[name] = {"x-transformation": raw} | DATA_TYPE_HINTS.get(field["type"], {})
+            hints[name] = DATA_TYPE_HINTS.get(field["type"], {}) | {"x-transformation": raw}
 
     return hints
 
@@ -97,26 +88,33 @@ def suiteql_query(
     """Page through resource via NetSuite's SuiteQL endpoint."""
 
     fields = [f'\t{columns[f]["x-transformation"]} AS {f}' for f in columns] # x-transformation AS alias
-    suiteql = "SELECT\n{fields}\nFROM {resource}".format(fields=",\n".join(fields), resource=resource)
+    suiteql = "SELECT\n{fields}\nFROM {resource} r".format(fields=",\n".join(fields), resource=resource)
 
     if incremental:
         cursor = incremental.cursor_path
         data_type = columns[cursor]["data_type"]
+        cursor = cursor if cursor.startswith("cust") else cursor.replace("_", "")
+
+        conditions = []
+        if incremental.last_value:
+            conditions.append(f"{cursor} > {_format_value(data_type, incremental.last_value)}")
+        if incremental.end_value:
+            conditions.append(f"{cursor} <= {_format_value(data_type, incremental.end_value)}")
+        if conditions:
+            suiteql += "\nWHERE " + "\nAND ".join(conditions)
 
         if xfilter:
-            suiteql += f"""\nWHERE {xfilter["fkey"]} IN (
-                        SELECT id
-                        FROM {xfilter["ftable"]}
-                        WHERE {xfilter["fcursor"]} > {_format_value(data_type, incremental.last_value)}
-                    )"""
-        else:
-            conditions = []
-            if incremental.last_value:
-                conditions.append(f"{cursor} > {_format_value(data_type, incremental.last_value)}")
-            if incremental.end_value:
-                conditions.append(f"{cursor} <= {_format_value(data_type, incremental.end_value)}")
-            if conditions:
-                suiteql += "\nWHERE " + "\nAND ".join(conditions)
+            fkey, ftable, fcursor = xfilter["fkey"], xfilter["ftable"], xfilter["fcursor"]
+            xfilter_value = _format_value(data_type, incremental.last_value)
+            # add cross filter using OR
+            suiteql += (
+                "\nOR EXISTS ("
+                "\n\tSELECT 1"
+                f"\n\tFROM {ftable} x"
+                f"\n\tWHERE r.{fkey} = x.id"
+                f"\n\t  AND x.{fcursor} > {xfilter_value}"
+                "\n)"
+            )
 
     if sort:
         suiteql += f"\nORDER BY {sort}"

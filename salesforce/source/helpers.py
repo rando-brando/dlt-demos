@@ -1,6 +1,7 @@
 import io
 
-import duckdb
+import pyarrow as pa
+import pyarrow.csv as csv
 from dlt.common import logger
 from simple_salesforce import Salesforce
 
@@ -13,8 +14,10 @@ def metadata_hints(sf: Salesforce, sobject: str):
     for fields in meta["fields"]:
         if fields["name"] == "Id":
             hints["Id"] = {"data_type": "text", "precision": 18, "unique": True}
+        elif fields["type"] in ("currency", "double", "percent") and fields["scale"] == 0:
+            hints[fields["name"]] = {"data_type": "bigint"}
         elif fields["type"] in ("currency", "double", "percent"):
-            hints[fields["name"]] = {"data_type": "decimal", "precision": fields["precision"], "scale": fields["scale"]}
+            hints[fields["name"]] = {"data_type": "double"}
         elif fields["type"] == "datetime":
             hints[fields["name"]] = {"data_type": "timestamp", "precision": 7, "timezone": False}
         elif fields["type"] == "date":
@@ -29,9 +32,27 @@ def metadata_hints(sf: Salesforce, sobject: str):
     return hints
 
 
+def _arrow_type(hint: dict) -> pa.DataType:
+    """Map a dlt column hint to the pyarrow type used to parse that SOQL CSV column."""
+    data_type = hint.get("data_type")
+    if data_type == "decimal":
+        return pa.decimal128(hint["precision"], hint["scale"])
+    if data_type == "double":
+        return pa.float64()
+    if data_type == "bigint":
+        return pa.int64()
+    if data_type == "bool":
+        return pa.bool_()
+    if data_type == "timestamp":
+        return pa.timestamp("us", tz="UTC")  # Bulk API emits "Z"; parsed tz-aware, stripped to naive below
+    if data_type == "date":
+        return pa.date32()
+    return pa.string()
+
+
 def _format_value(data_type: str, value):
     """Format an incremental cursor value for inline use in a SOQL WHERE clause."""
-    # SOQL date and dateTime literals must be bare (unquoted)
+    # SOQL date and datetime literals must be bare (unquoted)
     if data_type == "timestamp":
         return value.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     return f"'{value}'"
@@ -41,30 +62,34 @@ def soql_query(
         sf: Salesforce,
         sobject: str,
         columns: dict,
-        incremental=None
+        incremental=None,
+        filter: str = None
     ):
     """Bulk-query an SObject, using query_all to include deleted rows."""
 
     soql = "SELECT\n\t{fields}\nFROM {sobject}".format(fields=",\n\t".join(columns.keys()), sobject=sobject)
 
+    conditions = [filter] if filter else []
+
     if incremental:
         cursor = incremental.cursor_path
         data_type = columns[cursor]["data_type"]
 
-        conditions = []
         if incremental.last_value:
             conditions.append(f"{cursor} > {_format_value(data_type, incremental.last_value)}")
         if incremental.end_value:
             conditions.append(f"{cursor} <= {_format_value(data_type, incremental.end_value)}")
-        if conditions:
-            soql += "\nWHERE " + "\nAND ".join(conditions)
+
+    if conditions:
+        soql += "\nWHERE " + "\nAND ".join(conditions)
 
     logger.info(f"Generated SOQL query string:\n{soql}\n")
 
-    dtypes_map = {"decimal": "DOUBLE", "bool": "BOOLEAN", "timestamp": "TIMESTAMP", "date": "DATE"}
-    dtypes = {c: dtypes_map.get(h.get("data_type"), "VARCHAR") for c, h in columns.items()}
+    column_types = {c: pa.float64() if h.get("data_type") == "bigint" else _arrow_type(h) for c, h in columns.items()}
+    convert_options = csv.ConvertOptions(column_types=column_types, strings_can_be_null=True, null_values=[""])
+    parse_options = csv.ParseOptions(newlines_in_values=True)
 
-    con = duckdb.connect(":memory:")
     for csv_chunk in getattr(sf.bulk2, sobject).query_all(soql):
-        page = con.read_csv(io.StringIO(csv_chunk), dtype=dtypes)
-        yield page.arrow()
+        table = csv.read_csv(io.BytesIO(csv_chunk.encode("utf-8")), convert_options=convert_options, parse_options=parse_options)
+        schema = pa.schema({c: _arrow_type(h) for c, h in columns.items()})
+        yield table.cast(schema, safe=False)

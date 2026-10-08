@@ -3,5 +3,9 @@ log_level="INFO"
 dlthub_telemetry = false
 http_show_error_body = true
 
+[normalize.parquet_normalizer]
+add_dlt_id = true
+add_dlt_load_id = true
+
 [destination.duckdb]
 destination_name = "netsuite"
