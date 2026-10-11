@@ -1,13 +1,14 @@
 import dlt
 from simple_salesforce import Salesforce
 
+from source.auth import SalesforceCredentials
 from source.helpers import metadata_hints, soql_query
 
 
 @dlt.source(name="salesforce")
-def salesforce_source(credentials: dict = dlt.secrets.value):
+def salesforce_source(credentials: SalesforceCredentials = dlt.secrets.value):
     """Salesforce source and resources"""
-    sf = Salesforce(**credentials) # initialize simple salesforce client
+    client = Salesforce(**credentials) # initialize simple salesforce client
 
     # ─────────────────────────────────────────────
     # FULL LOAD (replace)

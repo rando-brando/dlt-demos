@@ -83,38 +83,27 @@ def suiteql_query(
         columns: dict,
         sort: str = None,
         incremental = None,
-        xfilter: dict = None # cross resource filter
+        filter: str = None
     ):
     """Page through resource via NetSuite's SuiteQL endpoint."""
 
     fields = [f'\t{columns[f]["x-transformation"]} AS {f}' for f in columns] # x-transformation AS alias
-    suiteql = "SELECT\n{fields}\nFROM {resource} r".format(fields=",\n".join(fields), resource=resource)
+    suiteql = "SELECT\n{fields}\nFROM {resource} tbl".format(fields=",\n".join(fields), resource=resource)
+
+    conditions = [filter] if filter else [] # use customer filter if provided
 
     if incremental:
         cursor = incremental.cursor_path
         data_type = columns[cursor]["data_type"]
         cursor = cursor if cursor.startswith("cust") else cursor.replace("_", "")
 
-        conditions = []
         if incremental.last_value:
             conditions.append(f"{cursor} > {_format_value(data_type, incremental.last_value)}")
         if incremental.end_value:
             conditions.append(f"{cursor} <= {_format_value(data_type, incremental.end_value)}")
-        if conditions:
-            suiteql += "\nWHERE " + "\nAND ".join(conditions)
 
-        if xfilter:
-            fkey, ftable, fcursor = xfilter["fkey"], xfilter["ftable"], xfilter["fcursor"]
-            xfilter_value = _format_value(data_type, incremental.last_value)
-            # add cross filter using OR
-            suiteql += (
-                "\nOR EXISTS ("
-                "\n\tSELECT 1"
-                f"\n\tFROM {ftable} x"
-                f"\n\tWHERE r.{fkey} = x.id"
-                f"\n\t  AND x.{fcursor} > {xfilter_value}"
-                "\n)"
-            )
+    if conditions:
+        suiteql += "\nWHERE " + "\nAND ".join(conditions)
 
     if sort:
         suiteql += f"\nORDER BY {sort}"

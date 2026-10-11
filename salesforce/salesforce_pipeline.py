@@ -16,6 +16,7 @@ def load_resource(resource_name: str, field: str = None, start = None, end = Non
         dataset_name="sfc",
         progress="log"
     )
+    pipeline.sync_destination() # ensure local state matches the destination
 
     source = salesforce_source()
     if resource_name not in source.resources:

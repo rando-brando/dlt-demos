@@ -72,6 +72,27 @@ def netsuite_source(auth: NetsuiteOAuth2 = dlt.secrets.value):
     # INCREMENTAL (merge)
     # ─────────────────────────────────────────────
     @dlt.resource(
+        name="consolidated_exchange_rate",
+        write_disposition="merge",
+        primary_key="id"
+    )
+    def consolidated_exchange_rate():
+        resource = dlt.current.resource_name().title().replace("_", "")
+        columns = metadata_hints(client, resource)
+        filter=None
+        if not dlt.current.pipeline().first_run:
+            filter = (
+                "EXISTS ("
+                "\n\tSELECT 1"
+                "\n\tFROM AccountingPeriod ap"
+                "\n\tWHERE tbl.postingperiod = ap.id"
+                "\n\t  AND ap.closedondate IS NULL"
+                "\n)"
+            ) # fetch and reload open posting periods
+        for items in suiteql_query(client, resource, columns, "id", None, filter):
+            yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
+    
+    @dlt.resource(
         name="customer",
         write_disposition="merge",
         primary_key="id"
@@ -162,23 +183,43 @@ def netsuite_source(auth: NetsuiteOAuth2 = dlt.secrets.value):
     @dlt.resource(
         name="transaction_accounting_line",
         write_disposition="merge",
+        merge_key="transaction",
         primary_key=("transaction", "transaction_line", "accounting_book")
     )
     def transaction_accounting_line(incremental=dlt.sources.incremental("last_modified_date", initial_value=None)):
         resource = dlt.current.resource_name().title().replace("_", "")
         columns = file_hints("hints/transaction_accounting_line.json")
-        for items in suiteql_query(client, resource, columns, "transaction, transactionline", incremental):
+        filter=None
+        if incremental.start_value and not incremental.end_value:
+            filter = (
+                "transaction IN ("
+                "\n\tSELECT transaction"
+                f"\n\tFROM {resource}"
+                f"\n\tWHERE lastmodifieddate > TO_TIMESTAMP('{incremental.last_value}', 'YYYY-MM-DD HH24:MI:SS')"
+                "\n)"
+            ) # fetch and reload all lines associated with a transaction if any have changed to capture deletes
+        for items in suiteql_query(client, resource, columns, "transaction, transactionline", not filter and incremental, filter):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
         name="transaction_line",
         write_disposition="merge",
+        merge_key="transaction",
         primary_key=("transaction", "id")
     )
     def transaction_line(incremental=dlt.sources.incremental("line_last_modified_date", initial_value=None)):
         resource = dlt.current.resource_name().title().replace("_", "")
         columns = file_hints("hints/transaction_line.json")
-        for items in suiteql_query(client, resource, columns, "transaction, id", incremental, cross_filter):
+        filter=None
+        if incremental.start_value and not incremental.end_value:
+            filter = (
+                "transaction IN ("
+                "\n\tSELECT transaction"
+                f"\n\tFROM {resource}"
+                f"\n\tWHERE linelastmodifieddate > TO_TIMESTAMP('{incremental.last_value}', 'YYYY-MM-DD HH24:MI:SS')"
+                "\n)"
+            ) # fetch and reload all lines associated with a transaction if any have changed to capture deletes
+        for items in suiteql_query(client, resource, columns, "transaction, id", not filter and incremental, filter):
             yield dlt.mark.with_hints(items, dlt.mark.make_hints(columns=columns))
 
     @dlt.resource(
@@ -197,6 +238,7 @@ def netsuite_source(auth: NetsuiteOAuth2 = dlt.secrets.value):
     return (
         account,
         accounting_period,
+        consolidated_exchange_rate,
         currency,
         customer,
         customer_subsidiary_relationship,

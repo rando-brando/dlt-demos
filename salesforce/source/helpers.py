@@ -6,9 +6,9 @@ from dlt.common import logger
 from simple_salesforce import Salesforce
 
 
-def metadata_hints(sf: Salesforce, sobject: str):
+def metadata_hints(client: Salesforce, sobject: str):
     """Return dlt column hints from /describe endpoint"""
-    meta = getattr(sf, sobject).describe()
+    meta = getattr(client, sobject).describe()
 
     hints = {}
     for fields in meta["fields"]:
@@ -59,17 +59,17 @@ def _format_value(data_type: str, value):
 
 
 def soql_query(
-        sf: Salesforce,
+        client: Salesforce,
         sobject: str,
         columns: dict,
-        incremental=None,
+        incremental = None,
         filter: str = None
     ):
     """Bulk-query an SObject, using query_all to include deleted rows."""
 
     soql = "SELECT\n\t{fields}\nFROM {sobject}".format(fields=",\n\t".join(columns.keys()), sobject=sobject)
 
-    conditions = [filter] if filter else []
+    conditions = [filter] if filter else [] # use customer filter if provided
 
     if incremental:
         cursor = incremental.cursor_path
@@ -89,7 +89,7 @@ def soql_query(
     convert_options = csv.ConvertOptions(column_types=column_types, strings_can_be_null=True, null_values=[""])
     parse_options = csv.ParseOptions(newlines_in_values=True)
 
-    for csv_chunk in getattr(sf.bulk2, sobject).query_all(soql):
+    for csv_chunk in getattr(client.bulk2, sobject).query_all(soql):
         table = csv.read_csv(io.BytesIO(csv_chunk.encode("utf-8")), convert_options=convert_options, parse_options=parse_options)
         schema = pa.schema({c: _arrow_type(h) for c, h in columns.items()})
         yield table.cast(schema, safe=False)
