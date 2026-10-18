@@ -1,0 +1,152 @@
+columns:
+  id:
+    data_type: bigint
+    nullable: false
+    primary_key: true
+  transactionId:
+    data_type: bigint
+    x-transformation: transaction
+    nullable: false
+    primary_key: true
+  uniqueKey:
+    data_type: bigint
+    unique: true
+  accountingLineType:
+    data_type: text
+    precision: 4000
+  categoryId:
+    data_type: bigint
+    x-transformation: category
+  category:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(category)
+  cleared:
+    data_type: bool
+  clearedDate:
+    data_type: date
+    x-transformation: TO_CHAR(cleareddate, 'YYYY-MM-DD')
+  closeDate:
+    data_type: date
+    x-transformation: TO_CHAR(closedate, 'YYYY-MM-DD')
+  commitmentFirm:
+    data_type: bool
+  createdFromId:
+    data_type: bigint
+    x-transformation: createdfrom
+  creditForeignAmount:
+    data_type: double
+  currencyId:
+    data_type: bigint
+    x-transformation: BUILTIN.CURRENCY(foreignamount)
+  debitForeignAmount:
+    data_type: double
+  departmentId:
+    data_type: bigint
+    x-transformation: department
+  documentNumber:
+    data_type: text
+    precision: 4000
+  doNotDisplayLine:
+    data_type: bool
+  dropShip:
+    data_type: bool
+  eliminate:
+    data_type: bool
+  entityId:
+    data_type: bigint
+    x-transformation: entity
+  expenseAccountId:
+    data_type: bigint
+    x-transformation: expenseaccount
+  foreignAmount:
+    data_type: double
+  foreignAmountPaid:
+    data_type: double
+  foreignAmountUnpaid:
+    data_type: double
+  foreignPaymentAmountUnused:
+    data_type: double
+  foreignPaymentAmountUsed:
+    data_type: double
+  fulfillable:
+    data_type: bool
+  fxAmountLinked:
+    data_type: double
+  inVsoeBundle:
+    data_type: bool
+  isBillable:
+    data_type: bool
+  isClosed:
+    data_type: bool
+  isCogs:
+    data_type: bool
+  isCustomGlLine:
+    data_type: bool
+  isFullyShipped:
+    data_type: bool
+  isFxVariance:
+    data_type: bool
+  isInventoryAffecting:
+    data_type: bool
+  isRevRecTransaction:
+    data_type: bool
+  itemId:
+    data_type: bigint
+    x-transformation: item
+  item:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(item)
+  itemType:
+    data_type: text
+    precision: 4000
+  lineLastModifiedDate:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(linelastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')
+  lineSequenceNumber:
+    data_type: bigint
+  mainLine:
+    data_type: bool
+  memo:
+    data_type: text
+    precision: 4000
+  needsRevenueElement:
+    data_type: bool
+  netAmount:
+    data_type: double
+  oldCommitmentFirm:
+    data_type: bool
+  paymentMethodId:
+    data_type: bigint
+    x-transformation: paymentmethod
+  paymentMethod:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(paymentmethod)
+  processedByRevCommit:
+    data_type: bool
+  quantity:
+    data_type: double
+  quantityBilled:
+    data_type: double
+  quantityRejected:
+    data_type: double
+  quantityShipRecv:
+    data_type: double
+  settlementAmount:
+    data_type: double
+  transactionDiscount:
+    data_type: bool
+  specialOrder:
+    data_type: bool
+  subsidiaryId:
+    data_type: bigint
+    x-transformation: subsidiary
+  taxLine:
+    data_type: bool
+  unitCostOverrideCurrency:
+    data_type: text
+    precision: 4000

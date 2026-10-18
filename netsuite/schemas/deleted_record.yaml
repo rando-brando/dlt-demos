@@ -1,0 +1,27 @@
+columns:
+  recordTypeId:
+    data_type: text
+    precision: 255
+    nullable: false
+    primary_key: true
+  recordId:
+    data_type: bigint
+    nullable: false
+    primary_key: true
+  name:
+    data_type: text
+    precision: 4000
+  deletedDate:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(deleteddate, 'YYYY-MM-DD HH24:MI:SS')
+  deletedById:
+    data_type: bigint
+    x-transformation: deletedby
+  isCustomList:
+    data_type: bool
+  isCustomRecord:
+    data_type: bool
+  isCustomTransaction:
+    data_type: bool

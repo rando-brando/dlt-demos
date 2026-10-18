@@ -1,0 +1,204 @@
+columns:
+  id:
+    data_type: bigint
+    unique: true
+    nullable: false
+    primary_key: true
+  abbrevType:
+    data_type: text
+    precision: 4000
+  accountBasedNumber:
+    data_type: text
+    precision: 4000
+  approvalStatusId:
+    data_type: bigint
+    x-transformation: approvalstatus
+  approvalStatus:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(approvalstatus)
+  balsegStatusId:
+    data_type: bigint
+    x-transformation: balsegstatus
+  balsegStatus:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(balsegstatus)
+  billingAddress:
+    data_type: text
+    precision: 4000
+  billingStatus:
+    data_type: text
+    precision: 4000
+  closeDate:
+    data_type: date
+    x-transformation: TO_CHAR(closedate, 'YYYY-MM-DD')
+  createdById:
+    data_type: bigint
+    x-transformation: createdby
+  createdDate:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(createddate, 'YYYY-MM-DD HH24:MI:SS')
+  currencyId:
+    data_type: bigint
+    x-transformation: currency
+  daysOpen:
+    data_type: double
+  daysOverdueSearch:
+    data_type: bigint
+  dueDate:
+    data_type: date
+    x-transformation: TO_CHAR(duedate, 'YYYY-MM-DD')
+  email:
+    data_type: text
+    precision: 4000
+  employeeId:
+    data_type: bigint
+    x-transformation: employee
+  entityId:
+    data_type: bigint
+    x-transformation: entity
+  exchangeRate:
+    data_type: double
+  externalId:
+    data_type: text
+    precision: 4000
+  foreignAmountPaid:
+    data_type: double
+  foreignAmountUnpaid:
+    data_type: double
+  foreignPaymentAmountUnused:
+    data_type: double
+  foreignPaymentAmountUsed:
+    data_type: double
+  foreignTotal:
+    data_type: double
+  includeInForecast:
+    data_type: bool
+  intercoAdj:
+    data_type: bool
+  isFinChrg:
+    data_type: bool
+  isReversal:
+    data_type: bool
+  journalType:
+    data_type: text
+    precision: 4000
+  lastModifiedById:
+    data_type: bigint
+    x-transformation: lastmodifiedby
+  lastModifiedDate:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')
+  memo:
+    data_type: text
+    precision: 4000
+  nextApproverId:
+    data_type: bigint
+    x-transformation: nextapprover
+  nexus:
+    data_type: bigint
+  number:
+    data_type: text
+    precision: 4000
+  ordPicked:
+    data_type: bool
+  paymentHold:
+    data_type: bool
+  paymentMethodId:
+    data_type: bigint
+    x-transformation: paymentmethod
+  paymentMethod:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(paymentmethod)
+  paymentOptionId:
+    data_type: bigint
+    x-transformation: paymentoption
+  paymentOption:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(paymentoption)
+  posting:
+    data_type: bool
+  postingPeriodId:
+    data_type: bigint
+    x-transformation: postingperiod
+  printedPickingTicket:
+    data_type: bool
+  recordType:
+    data_type: text
+    precision: 4000
+  reversal:
+    data_type: bigint
+  reversalDate:
+    data_type: date
+    x-transformation: TO_CHAR(reversaldate, 'YYYY-MM-DD')
+  reversalDefer:
+    data_type: bool
+  shipCarrier:
+    data_type: text
+    precision: 4000
+  shipComplete:
+    data_type: bool
+  shipDate:
+    data_type: date
+    x-transformation: TO_CHAR(shipdate, 'YYYY-MM-DD')
+  shippingAddress:
+    data_type: text
+    precision: 4000
+  source:
+    data_type: text
+    precision: 4000
+  statusId:
+    data_type: text
+    precision: 4000
+    x-transformation: status
+  status:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(status)
+  termsId:
+    data_type: bigint
+    x-transformation: terms
+  terms:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(terms)
+  toBePrinted:
+    data_type: bool
+  tranDate:
+    data_type: date
+    x-transformation: TO_CHAR(trandate, 'YYYY-MM-DD')
+  tranDisplayName:
+    data_type: text
+    precision: 4000
+  tranId:
+    data_type: text
+    precision: 4000
+  transactionNumber:
+    data_type: text
+    precision: 4000
+  typeId:
+    data_type: text
+    precision: 4000
+    x-transformation: type
+  type:
+    data_type: text
+    precision: 4000
+    x-transformation: BUILTIN.DF(type)
+  typeBasedDocumentNumber:
+    data_type: text
+    precision: 4000
+  useRevenueArrangement:
+    data_type: bool
+  visibleToCustomer:
+    data_type: bool
+  void:
+    data_type: bool
+  voided:
+    data_type: bool

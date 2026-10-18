@@ -1,0 +1,35 @@
+columns:
+  foreignAmount:
+    data_type: double
+  lastModifiedDate:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')
+  linkType:
+    data_type: text
+    precision: 255
+    nullable: false
+    primary_key: true
+  nextDoc:
+    data_type: bigint
+    nullable: false
+    primary_key: true
+  nextLine:
+    data_type: bigint
+    nullable: false
+    primary_key: true
+  nextType:
+    data_type: text
+    precision: 4000
+  previousDoc:
+    data_type: bigint
+    nullable: false
+    primary_key: true
+  previousLine:
+    data_type: bigint
+    nullable: false
+    primary_key: true
+  previousType:
+    data_type: text
+    precision: 4000

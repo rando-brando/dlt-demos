@@ -7,5 +7,8 @@ http_show_error_body = true
 add_dlt_id = true
 add_dlt_load_id = true
 
+[schema]
+naming = "duck_case"
+
 [destination.duckdb]
 destination_name = "netsuite"

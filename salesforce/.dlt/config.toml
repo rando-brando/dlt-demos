@@ -6,5 +6,8 @@ dlthub_telemetry = false
 add_dlt_id = true
 add_dlt_load_id = true
 
+[schema]
+naming = "duck_case"
+
 [destination.duckdb]
 destination_name = "salesforce"

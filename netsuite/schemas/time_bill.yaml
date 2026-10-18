@@ -1,0 +1,3 @@
+columns:
+  billed:
+    data_type: bool

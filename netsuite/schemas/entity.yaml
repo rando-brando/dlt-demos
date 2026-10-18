@@ -1,0 +1,103 @@
+columns:
+  id:
+    data_type: bigint
+    unique: true
+    nullable: false
+    primary_key: true
+  externalId:
+    data_type: text
+    precision: 4000
+  altName:
+    data_type: text
+    precision: 4000
+  comments:
+    data_type: text
+    precision: 4000
+  contactId:
+    data_type: bigint
+    x-transformation: contact
+  customerId:
+    data_type: bigint
+    x-transformation: customer
+  dateCreated:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(datecreated, 'YYYY-MM-DD HH24:MI:SS')
+  email:
+    data_type: text
+    precision: 4000
+  employeeId:
+    data_type: bigint
+    x-transformation: employee
+  entityId:
+    data_type: text
+    precision: 4000
+  entityNumber:
+    data_type: text
+    precision: 4000
+  entityTitle:
+    data_type: text
+    precision: 4000
+  firstName:
+    data_type: text
+    precision: 4000
+  genericResourceId:
+    data_type: bigint
+    x-transformation: genericresource
+  groupId:
+    data_type: bigint
+    x-transformation: group
+  isInactive:
+    data_type: bool
+  isPerson:
+    data_type: bool
+  laborCost:
+    data_type: double
+  lastModifiedDate:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')
+  lastName:
+    data_type: text
+    precision: 4000
+  middleName:
+    data_type: text
+    precision: 4000
+  mobilePhone:
+    data_type: text
+    precision: 4000
+  otherName:
+    data_type: text
+    precision: 4000
+  parentId:
+    data_type: bigint
+    x-transformation: parent
+  phone:
+    data_type: text
+    precision: 4000
+  projectId:
+    data_type: bigint
+    x-transformation: project
+  projectTemplateId:
+    data_type: bigint
+    x-transformation: projecttemplate
+  salutation:
+    data_type: text
+    precision: 4000
+  subsidiaryId:
+    data_type: bigint
+    x-transformation: subsidiary
+  title:
+    data_type: text
+    precision: 4000
+  topLevelParentId:
+    data_type: bigint
+    x-transformation: toplevelparent
+  type:
+    data_type: text
+    precision: 4000
+  vendorId:
+    data_type: bigint
+    x-transformation: vendor

@@ -1,0 +1,51 @@
+columns:
+  accountingBookId:
+    data_type: bigint
+    x-transformation: accountingbook
+    nullable: false
+    primary_key: true
+  transactionId:
+    data_type: bigint
+    x-transformation: transaction
+    nullable: false
+    primary_key: true
+  transactionLineId:
+    data_type: bigint
+    x-transformation: transactionline
+    nullable: false
+    primary_key: true
+  accountId:
+    data_type: bigint
+    x-transformation: account
+  accountType:
+    data_type: text
+    precision: 4000
+  amount:
+    data_type: double
+  amountLinked:
+    data_type: double
+  amountPaid:
+    data_type: double
+  amountUnpaid:
+    data_type: double
+  credit:
+    data_type: double
+  debit:
+    data_type: double
+  exchangeRate:
+    data_type: double
+  lastModifiedDate:
+    data_type: timestamp
+    precision: 7
+    timezone: false
+    x-transformation: TO_CHAR(lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')
+  netAmount:
+    data_type: double
+  paymentAmountUnused:
+    data_type: double
+  paymentAmountUsed:
+    data_type: double
+  posting:
+    data_type: bool
+  processedByRevCommit:
+    data_type: bool

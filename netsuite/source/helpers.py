@@ -1,16 +1,21 @@
-import json
+import yaml
 
 from dlt.common import logger
-from dlt.common.normalizers.naming.snake_case import NamingConvention as SnakeCaseNamingConvention
 from dlt.sources.helpers.rest_client import RESTClient
 from dlt.sources.helpers.rest_client.paginators import OffsetPaginator
 
-snake_case = SnakeCaseNamingConvention()
 
+def schema_hints(path: str):
+    """Return dlt column hints for a table from a dlt schema yaml file.
 
-def file_hints(path: str):
-    """Return dlt column hints from file"""
-    return json.load(open(path))
+    x-transformation defaults to the lowercased column name; set it in the yaml only when it differs."""
+    with open(path) as f:
+        schema = yaml.safe_load(f)
+    return {
+        name: {"x-transformation": name.lower(), **hints}
+        for name, hints in schema["columns"].items()
+        if not name.startswith("_dlt_")
+    }
 
 
 def metadata_hints(client: RESTClient, resource: str):
@@ -27,7 +32,7 @@ def metadata_hints(client: RESTClient, resource: str):
         "double": {"data_type": "double"},
         "float": {"data_type": "double"},
         "int64": {"data_type": "bigint"},
-        "object": {"data_type": "text", "precision": 4000},
+        "object": {"data_type": "text", "precision": 900},
         "string": {"data_type": "text", "precision": 4000}
     }
 
@@ -45,8 +50,7 @@ def metadata_hints(client: RESTClient, resource: str):
 
     hints = {}
     for field in fields:
-        raw = field["name"] # original (camelCase) name as returned by the metadata catalog
-        name = snake_case.normalize_identifier(raw) # snake_case hint key / output column name
+        name = raw = field["name"] # camelCase name from the metadata catalog
         if name == "id":
             hints[name] = {"data_type": "bigint", "unique": True, "x-transformation": raw}
         elif field["format"]:
@@ -56,12 +60,23 @@ def metadata_hints(client: RESTClient, resource: str):
                 hints[name]["x-transformation"] = f"TO_CHAR({raw}, 'YYYY-MM-DD')"
             if field["format"] == "date-time":
                 hints[name]["x-transformation"] = f"TO_CHAR({raw}, 'YYYY-MM-DD HH24:MI:SS')"
-        # objects with "links" require BUILTIN.DF to access their text value
-        elif field["type"] == "object" and field["properties"].get("links") and name[-3:] != "_id":
+        # objects require BUILTIN.DF to access their text value
+        elif field["type"] == "object" and not name.endswith(("Id", "_id")):
+            """ Object fields return an id value whose title value can be accessed using Netsuite's BUILTIN.DF
+            The id value is generally an integer with some exceptions:
+            1. ids of type enum are categorical text (most common)
+            2. fields of type dropdown are categorical text (rare)
+            3. array objects are comma separated ids (occasional)
+            """
+            is_enum = field.get("properties", {}).get("id", {}).get("enum") # enum ids
+            is_dropdown = name.startswith("dropdown")
+            has_items = field.get("properties", {}).get("items") # array of ids
+            
+            hint = "object" if is_enum or has_items or is_dropdown else "int64"
             # the object's internal id
-            hints[name + "_id"] = DATA_TYPE_HINTS.get(field["type"], {}) | {"x-transformation": raw}
+            hints[name + ("_id" if "_" in name else "Id")] = DATA_TYPE_HINTS.get(hint, {}) | {"x-transformation": raw}
             # the object's text value
-            hints[name] = DATA_TYPE_HINTS.get(field["type"], {}) | {"x-transformation": f"BUILTIN.DF({raw})"}
+            hints[name] = DATA_TYPE_HINTS.get("string", {}) | {"x-transformation": f"BUILTIN.DF({raw})"}
         else:
             hints[name] = DATA_TYPE_HINTS.get(field["type"], {}) | {"x-transformation": raw}
 
@@ -95,7 +110,6 @@ def suiteql_query(
     if incremental:
         cursor = incremental.cursor_path
         data_type = columns[cursor]["data_type"]
-        cursor = cursor if cursor.startswith("cust") else cursor.replace("_", "")
 
         if incremental.last_value:
             conditions.append(f"{cursor} > {_format_value(data_type, incremental.last_value)}")
@@ -110,14 +124,18 @@ def suiteql_query(
 
     logger.info(f"Generated SuiteQL query string:\n{suiteql}\n")
 
-    yield from client.paginate(
+    # SuiteQL returns all keys lowercased; restore the camelCase column names
+    names = {c.lower(): c for c in columns}
+
+    for items in client.paginate(
         "query/v1/suiteql",
         method="POST",
         headers={"Prefer": "transient", "Content-Type": "application/json"},
         json={"q": suiteql},
         data_selector="items",
         paginator=OffsetPaginator(limit=1000, total_path=None, has_more_path="hasMore"),
-    )
+    ):
+        yield [{names.get(k, k): v for k, v in item.items()} for item in items]
 
 
 def numeric_max(values):
